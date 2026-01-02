@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -22,6 +23,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [isEmailFocused, setIsEmailFocused] = useState(false);
+
+  const router = useRouter();
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -265,7 +268,7 @@ export default function LoginScreen() {
               <Text style={styles.footerText}>
                 Don&apos;t have an account?{" "}
               </Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/(auth)/signup")}>
                 <Text style={styles.footerLink}>Sign Up</Text>
               </TouchableOpacity>
             </View>
