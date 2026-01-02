@@ -1,8 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { auth } from "@/src/configurations/firebase";
+import { getAuthErrorMessage } from "@/src/contexts/AuthContext";
+import { useAuth } from "@/src/hooks/useAuth";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +26,9 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
+  const { signIn } = useAuth();
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -82,47 +86,25 @@ export default function LoginScreen() {
   }, []);
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    // Validation
+    if (!email.trim() || !password.trim()) {
       Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    if (!email.includes("@")) {
+      Alert.alert("Error", "Please enter a valid email address");
       return;
     }
 
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const user = userCredential.user;
-      console.log("User logged in successfully:", user.uid);
-      Alert.alert("Success", "Logged in successfully!");
-      // Navigate to your home screen here
-      // navigation.navigate('Home');
+      await signIn(email.trim(), password);
+      // Navigation is handled by RootLayoutNav automatically
+      console.log("Login successful");
     } catch (error: any) {
       console.error("Login error:", error);
-      let errorMessage = "An error occurred during login";
-
-      switch (error.code) {
-        case "auth/invalid-email":
-          errorMessage = "Invalid email address";
-          break;
-        case "auth/user-disabled":
-          errorMessage = "This account has been disabled";
-          break;
-        case "auth/user-not-found":
-          errorMessage = "No account found with this email";
-          break;
-        case "auth/wrong-password":
-          errorMessage = "Incorrect password";
-          break;
-        case "auth/invalid-credential":
-          errorMessage = "Invalid email or password";
-          break;
-        default:
-          errorMessage = error.message;
-      }
-
+      const errorMessage = getAuthErrorMessage(error.code);
       Alert.alert("Login Failed", errorMessage);
     } finally {
       setLoading(false);
@@ -252,6 +234,7 @@ export default function LoginScreen() {
                       autoCapitalize="none"
                       autoComplete="password"
                       editable={!loading}
+                      onSubmitEditing={handleLogin}
                     />
                   </View>
                 </View>
@@ -259,6 +242,16 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   style={styles.forgotPassword}
                   disabled={loading}
+                  onPress={() => {
+                    if (email.trim()) {
+                      Alert.alert(
+                        "Reset Password",
+                        "Password reset functionality coming soon!"
+                      );
+                    } else {
+                      Alert.alert("Error", "Please enter your email first");
+                    }
+                  }}
                 >
                   <Text style={styles.forgotPasswordText}>
                     Forgot Password?
@@ -295,6 +288,12 @@ export default function LoginScreen() {
                   style={styles.socialButton}
                   activeOpacity={0.8}
                   disabled={loading}
+                  onPress={() =>
+                    Alert.alert(
+                      "Coming Soon",
+                      "Biometric authentication will be available soon!"
+                    )
+                  }
                 >
                   <Text style={styles.socialButtonText}>
                     🔐 Sign in with Biometrics
@@ -308,7 +307,10 @@ export default function LoginScreen() {
               <Text style={styles.footerText}>
                 Don&apos;t have an account?{" "}
               </Text>
-              <TouchableOpacity disabled={loading}>
+              <TouchableOpacity
+                disabled={loading}
+                onPress={() => router.push("/(auth)/signup")}
+              >
                 <Text style={styles.footerLink}>Sign Up</Text>
               </TouchableOpacity>
             </View>

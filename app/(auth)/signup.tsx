@@ -1,9 +1,13 @@
 /* eslint-disable react-hooks/exhaustive-deps */
+import { getAuthErrorMessage } from "@/src/contexts/AuthContext";
+import { useAuth } from "@/src/hooks/useAuth";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
@@ -24,8 +28,10 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
+  const { signUp } = useAuth();
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -82,17 +88,51 @@ export default function SignUpScreen() {
     createFloatingAnimation(floatingAnim3, 6000).start();
   }, []);
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
+    // Validation
+    if (
+      !name.trim() ||
+      !email.trim() ||
+      !password.trim() ||
+      !confirmPassword.trim()
+    ) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    if (!email.includes("@")) {
+      Alert.alert("Error", "Please enter a valid email address");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters long");
+      return;
+    }
+
     if (password !== confirmPassword) {
-      console.log("Passwords do not match");
+      Alert.alert("Error", "Passwords do not match");
       return;
     }
+
     if (!agreeToTerms) {
-      console.log("Please agree to terms and conditions");
+      Alert.alert("Error", "Please agree to terms and conditions");
       return;
     }
-    console.log("Sign up pressed", { name, email, password });
-    // Add your registration logic here
+
+    setLoading(true);
+    try {
+      await signUp(email.trim(), password, name.trim());
+      // Navigation is handled by RootLayoutNav automatically
+      Alert.alert("Success", "Account created successfully!", [{ text: "OK" }]);
+      console.log("Sign up successful");
+    } catch (error: any) {
+      console.error("Sign up error:", error);
+      const errorMessage = getAuthErrorMessage(error.code);
+      Alert.alert("Sign Up Failed", errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -199,6 +239,7 @@ export default function SignUpScreen() {
                       onChangeText={setName}
                       autoCapitalize="words"
                       autoComplete="name"
+                      editable={!loading}
                     />
                   </View>
                 </View>
@@ -215,6 +256,7 @@ export default function SignUpScreen() {
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoComplete="email"
+                      editable={!loading}
                     />
                   </View>
                 </View>
@@ -224,13 +266,14 @@ export default function SignUpScreen() {
                   <View style={styles.inputContainer}>
                     <TextInput
                       style={styles.input}
-                      placeholder="Create a password"
+                      placeholder="Create a password (min 6 characters)"
                       placeholderTextColor="rgba(255, 255, 255, 0.4)"
                       value={password}
                       onChangeText={setPassword}
                       secureTextEntry
                       autoCapitalize="none"
                       autoComplete="password-new"
+                      editable={!loading}
                     />
                   </View>
                 </View>
@@ -247,6 +290,8 @@ export default function SignUpScreen() {
                       secureTextEntry
                       autoCapitalize="none"
                       autoComplete="password-new"
+                      editable={!loading}
+                      onSubmitEditing={handleSignUp}
                     />
                   </View>
                 </View>
@@ -255,6 +300,7 @@ export default function SignUpScreen() {
                   style={styles.termsContainer}
                   onPress={() => setAgreeToTerms(!agreeToTerms)}
                   activeOpacity={0.8}
+                  disabled={loading}
                 >
                   <View style={styles.checkbox}>
                     {agreeToTerms && <View style={styles.checkboxInner} />}
@@ -269,6 +315,7 @@ export default function SignUpScreen() {
                   style={styles.signUpButton}
                   onPress={handleSignUp}
                   activeOpacity={0.8}
+                  disabled={loading}
                 >
                   <LinearGradient
                     colors={["#667eea", "#764ba2"]}
@@ -276,7 +323,13 @@ export default function SignUpScreen() {
                     end={{ x: 1, y: 0 }}
                     style={styles.signUpButtonGradient}
                   >
-                    <Text style={styles.signUpButtonText}>Create Account</Text>
+                    {loading ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text style={styles.signUpButtonText}>
+                        Create Account
+                      </Text>
+                    )}
                   </LinearGradient>
                 </TouchableOpacity>
 
@@ -289,6 +342,13 @@ export default function SignUpScreen() {
                 <TouchableOpacity
                   style={styles.socialButton}
                   activeOpacity={0.8}
+                  disabled={loading}
+                  onPress={() =>
+                    Alert.alert(
+                      "Coming Soon",
+                      "Biometric sign up will be available soon!"
+                    )
+                  }
                 >
                   <Text style={styles.socialButtonText}>
                     🔐 Sign up with Biometrics
@@ -300,7 +360,10 @@ export default function SignUpScreen() {
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => router.back()}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                disabled={loading}
+              >
                 <Text style={styles.footerLink}>Sign In</Text>
               </TouchableOpacity>
             </View>
