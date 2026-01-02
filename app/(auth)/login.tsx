@@ -1,9 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
+import { auth } from "@/src/configurations/firebase";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
@@ -21,10 +24,7 @@ const { height } = Dimensions.get("window");
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
-  const [isEmailFocused, setIsEmailFocused] = useState(false);
-
-  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -81,9 +81,52 @@ export default function LoginScreen() {
     createFloatingAnimation(floatingAnim3, 6000).start();
   }, []);
 
-  const handleLogin = () => {
-    console.log("Login pressed", { email, password });
-    // Add your authentication logic here
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+      console.log("User logged in successfully:", user.uid);
+      Alert.alert("Success", "Logged in successfully!");
+      // Navigate to your home screen here
+      // navigation.navigate('Home');
+    } catch (error: any) {
+      console.error("Login error:", error);
+      let errorMessage = "An error occurred during login";
+
+      switch (error.code) {
+        case "auth/invalid-email":
+          errorMessage = "Invalid email address";
+          break;
+        case "auth/user-disabled":
+          errorMessage = "This account has been disabled";
+          break;
+        case "auth/user-not-found":
+          errorMessage = "No account found with this email";
+          break;
+        case "auth/wrong-password":
+          errorMessage = "Incorrect password";
+          break;
+        case "auth/invalid-credential":
+          errorMessage = "Invalid email or password";
+          break;
+        default:
+          errorMessage = error.message;
+      }
+
+      Alert.alert("Login Failed", errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -181,51 +224,42 @@ export default function LoginScreen() {
               <BlurView intensity={20} tint="dark" style={styles.formCard}>
                 <View style={styles.inputWrapper}>
                   <Text style={styles.inputLabel}>Email</Text>
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      isEmailFocused && styles.inputContainerFocused,
-                    ]}
-                  >
+                  <View style={styles.inputContainer}>
                     <TextInput
                       style={styles.input}
                       placeholder="Enter your email"
                       placeholderTextColor="rgba(255, 255, 255, 0.4)"
                       value={email}
                       onChangeText={setEmail}
-                      onFocus={() => setIsEmailFocused(true)}
-                      onBlur={() => setIsEmailFocused(false)}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoComplete="email"
+                      editable={!loading}
                     />
                   </View>
                 </View>
 
                 <View style={styles.inputWrapper}>
                   <Text style={styles.inputLabel}>Password</Text>
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      isPasswordFocused && styles.inputContainerFocused,
-                    ]}
-                  >
+                  <View style={styles.inputContainer}>
                     <TextInput
                       style={styles.input}
                       placeholder="Enter your password"
                       placeholderTextColor="rgba(255, 255, 255, 0.4)"
                       value={password}
                       onChangeText={setPassword}
-                      onFocus={() => setIsPasswordFocused(true)}
-                      onBlur={() => setIsPasswordFocused(false)}
                       secureTextEntry
                       autoCapitalize="none"
                       autoComplete="password"
+                      editable={!loading}
                     />
                   </View>
                 </View>
 
-                <TouchableOpacity style={styles.forgotPassword}>
+                <TouchableOpacity
+                  style={styles.forgotPassword}
+                  disabled={loading}
+                >
                   <Text style={styles.forgotPasswordText}>
                     Forgot Password?
                   </Text>
@@ -235,6 +269,7 @@ export default function LoginScreen() {
                   style={styles.loginButton}
                   onPress={handleLogin}
                   activeOpacity={0.8}
+                  disabled={loading}
                 >
                   <LinearGradient
                     colors={["#667eea", "#764ba2"]}
@@ -242,7 +277,11 @@ export default function LoginScreen() {
                     end={{ x: 1, y: 0 }}
                     style={styles.loginButtonGradient}
                   >
-                    <Text style={styles.loginButtonText}>Sign In</Text>
+                    {loading ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text style={styles.loginButtonText}>Sign In</Text>
+                    )}
                   </LinearGradient>
                 </TouchableOpacity>
 
@@ -255,6 +294,7 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   style={styles.socialButton}
                   activeOpacity={0.8}
+                  disabled={loading}
                 >
                   <Text style={styles.socialButtonText}>
                     🔐 Sign in with Biometrics
@@ -268,7 +308,7 @@ export default function LoginScreen() {
               <Text style={styles.footerText}>
                 Don&apos;t have an account?{" "}
               </Text>
-              <TouchableOpacity onPress={() => router.push("/(auth)/signup")}>
+              <TouchableOpacity disabled={loading}>
                 <Text style={styles.footerLink}>Sign Up</Text>
               </TouchableOpacity>
             </View>
@@ -388,10 +428,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 56,
     justifyContent: "center",
-  },
-  inputContainerFocused: {
-    borderColor: "#667eea",
-    backgroundColor: "rgba(102, 126, 234, 0.08)",
   },
   input: {
     fontSize: 16,
