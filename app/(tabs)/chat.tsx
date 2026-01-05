@@ -1,11 +1,14 @@
 import React from "react";
-import { Text, View } from "react-native";
+import { Text } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Chat = () => {
   return (
-    <View>
-      <Text>Chat</Text>
-    </View>
+    <SafeAreaView className="flex-1 bg-white">
+      <Text className="text-3xl" style={{ fontWeight: "bold", fontSize: 30 }}>
+        Chat
+      </Text>
+    </SafeAreaView>
   );
 };
 

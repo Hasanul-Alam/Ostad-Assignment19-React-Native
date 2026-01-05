@@ -1,22 +1,76 @@
-// Import the functions you need from the SDKs you need
+/* eslint-disable @typescript-eslint/no-require-imports */
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import {
+  browserLocalPersistence,
+  getAuth,
+  initializeAuth,
+} from "firebase/auth";
+import { getFirestore } from "firebase/firestore"; // ← Add this import
 
-// Your web app's Firebase configuration
+// Dynamically get React Native persistence to avoid TypeScript errors
+let getReactNativePersistence: any;
+try {
+  const authModule = require("firebase/auth");
+  getReactNativePersistence = authModule.getReactNativePersistence;
+} catch {
+  // Fallback if module structure is different
+  getReactNativePersistence = () => browserLocalPersistence;
+}
+
+// Your Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBnf4UngZAOWunkBpjdrFoeuZcLqHHSIto",
-  authDomain: "ostad-assignment-19.firebaseapp.com",
-  projectId: "ostad-assignment-19",
-  storageBucket: "ostad-assignment-19.firebasestorage.app",
-  messagingSenderId: "761065810448",
-  appId: "1:761065810448:web:0a1ec921895b9599dfb895",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
+// Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Authentication and get a reference to the service
-export const auth = getAuth(app);
+// Initialize Auth with proper persistence handling
+export const auth = (() => {
+  try {
+    // Prefer AsyncStorage-based persistence on React Native if available
+    let persistence = browserLocalPersistence;
+
+    try {
+      // Dynamic require so the app still runs if the package isn't installed
+      const RNAsyncStorage =
+        require("@react-native-async-storage/async-storage").default;
+
+      if (RNAsyncStorage && getReactNativePersistence) {
+        persistence = getReactNativePersistence(RNAsyncStorage as any);
+        console.log("✅ Using React Native AsyncStorage persistence");
+      } else {
+        console.log("⚠️ Falling back to browser persistence");
+      }
+    } catch {
+      // Package not installed or require failed — fall back to browserLocalPersistence
+      console.log("⚠️ AsyncStorage not available, using browser persistence");
+    }
+
+    const authInstance = initializeAuth(app, {
+      persistence,
+    });
+
+    console.log("✅ Firebase Auth initialized successfully");
+    return authInstance;
+  } catch (e: any) {
+    // Fallback to regular getAuth if initializeAuth is not available or already initialized
+    if (e.code === "auth/already-initialized") {
+      console.log("⚠️ Auth already initialized, using existing instance");
+      return getAuth(app);
+    }
+    console.error("❌ Error initializing auth:", e);
+    return getAuth(app);
+  }
+})();
+
+// Initialize Firestore
+export const db = getFirestore(app); // ← Add this export
+console.log("✅ Firestore initialized successfully");
+
 export default app;

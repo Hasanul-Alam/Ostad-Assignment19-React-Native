@@ -1,9 +1,10 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { getAuthErrorMessage } from "@/src/contexts/AuthContext";
-import { useAuth } from "@/src/hooks/useAuth";
+
+import { auth } from "@/src/configurations/firebase";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -28,7 +29,6 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
-  const { signIn } = useAuth();
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -99,14 +99,36 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      await signIn(email.trim(), password);
-      // Navigation is handled by RootLayoutNav automatically
-      console.log("Login successful");
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      console.log("Login successful:", userCredential.user.email);
+      // Navigation will be handled automatically by RootLayout
+      // based on onAuthStateChanged listener
     } catch (error: any) {
-      console.error("Login error:", error);
-      const errorMessage = getAuthErrorMessage(error.code);
+      console.error("Login error:", error.message);
+
+      // Handle specific Firebase auth errors
+      let errorMessage = "An error occurred during login";
+
+      if (
+        error.code === "auth/invalid-credential" ||
+        error.code === "auth/wrong-password"
+      ) {
+        errorMessage = "Invalid email or password";
+      } else if (error.code === "auth/user-not-found") {
+        errorMessage = "No account found with this email";
+      } else if (error.code === "auth/user-disabled") {
+        errorMessage = "This account has been disabled";
+      } else if (error.code === "auth/too-many-requests") {
+        errorMessage = "Too many failed attempts. Please try again later";
+      } else if (error.code === "auth/network-request-failed") {
+        errorMessage = "Network error. Please check your connection";
+      }
+
       Alert.alert("Login Failed", errorMessage);
-    } finally {
       setLoading(false);
     }
   };
@@ -271,7 +293,10 @@ export default function LoginScreen() {
                     style={styles.loginButtonGradient}
                   >
                     {loading ? (
-                      <ActivityIndicator color="#ffffff" />
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator color="#ffffff" />
+                        <Text style={styles.loadingText}>Signing in...</Text>
+                      </View>
                     ) : (
                       <Text style={styles.loginButtonText}>Sign In</Text>
                     )}
@@ -463,8 +488,21 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: "center",
     justifyContent: "center",
+    minHeight: 56,
   },
   loginButtonText: {
+    color: "#ffffff",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  loadingText: {
     color: "#ffffff",
     fontSize: 17,
     fontWeight: "700",

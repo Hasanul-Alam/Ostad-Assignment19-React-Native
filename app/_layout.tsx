@@ -1,73 +1,60 @@
-/* eslint-disable import/no-named-as-default */
 /* eslint-disable react-hooks/exhaustive-deps */
-// app/_layout.tsx
-import { AuthProvider } from "@/src/contexts/AuthContext";
-import useAuth from "@/src/hooks/useAuth";
-import { Stack, useRouter, useSegments } from "expo-router";
-import { useEffect } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { auth } from "@/src/configurations/firebase";
+import { AuthContext } from "@/src/contexts/AuthContext";
+import { Slot, useRouter, useSegments } from "expo-router";
+import { onAuthStateChanged } from "firebase/auth";
+import React, { useEffect } from "react";
+import { ActivityIndicator, StatusBar, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import "../global.css";
 
-// This component handles automatic navigation based on auth state
-function RootLayoutNav() {
-  const { user, loading } = useAuth();
+const RootLayout = () => {
+  const [user, setUser] = React.useState<any | null>(null);
+  const [loading, setLoading] = React.useState(true);
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    // Don't do anything while checking auth state
+    const unsubscribe = onAuthStateChanged(auth, (usr) => {
+      console.log("Auth State Changed:", usr);
+      setUser(usr);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
     if (loading) return;
 
-    // Check if we're in the auth group (login/signup screens)
     const inAuthGroup = segments[0] === "(auth)";
 
-    console.log("Auth State:", {
-      user: user?.email,
-      loading,
-      inAuthGroup,
-      segments,
-    });
-
-    // If user is NOT logged in and NOT in auth screens -> go to login
     if (!user && !inAuthGroup) {
-      console.log("Redirecting to login (no user)");
+      // Redirect to login if not authenticated
       router.replace("/(auth)/login");
-    }
-    // If user IS logged in and IS in auth screens -> go to main app
-    else if (user && inAuthGroup) {
-      console.log("Redirecting to main app (user logged in)");
+    } else if (user && inAuthGroup) {
+      // Redirect to tabs if authenticated
       router.replace("/(tabs)/chat");
     }
-  }, [user, loading, segments]);
+  }, [user, segments, loading]);
 
-  // Show loading screen while checking auth state
   if (loading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#0f0c29",
-        }}
-      >
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator size="large" color="#667eea" />
       </View>
     );
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(tabs)" />
-    </Stack>
+    <>
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaProvider style={{ flex: 1 }}>
+        <AuthContext.Provider value={{ user }}>
+          <Slot />
+        </AuthContext.Provider>
+      </SafeAreaProvider>
+    </>
   );
-}
+};
 
-// Main layout wrapper with AuthProvider
-export default function RootLayout() {
-  return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
-  );
-}
+export default RootLayout;
