@@ -266,7 +266,7 @@ const Test = () => {
 
             {/* Reset Button */}
             <TouchableOpacity
-              className="border border-gray-300 rounded-lg py-4 mt-2 mb-0"
+              className="border border-gray-300 rounded-lg py-4 mt-4"
               onPress={() =>
                 setFormData({
                   title: "",

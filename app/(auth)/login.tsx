@@ -99,12 +99,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      console.log("Login successful:", userCredential.user.email);
+      await signInWithEmailAndPassword(auth, email, password);
       // Navigation will be handled automatically by RootLayout
       // based on onAuthStateChanged listener
     } catch (error: any) {

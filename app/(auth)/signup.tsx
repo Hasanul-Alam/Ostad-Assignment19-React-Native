@@ -125,7 +125,6 @@ export default function SignUpScreen() {
       await signUp(email.trim(), password, name.trim());
       // Navigation is handled by RootLayoutNav automatically
       Alert.alert("Success", "Account created successfully!", [{ text: "OK" }]);
-      console.log("Sign up successful");
     } catch (error: any) {
       console.error("Sign up error:", error);
       const errorMessage = getAuthErrorMessage(error.code);

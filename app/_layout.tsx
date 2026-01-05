@@ -16,7 +16,6 @@ const RootLayout = () => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (usr) => {
-      console.log("Auth State Changed:", usr);
       setUser(usr);
       setLoading(false);
     });

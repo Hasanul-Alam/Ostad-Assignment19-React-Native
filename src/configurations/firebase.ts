@@ -43,25 +43,20 @@ export const auth = (() => {
 
       if (RNAsyncStorage && getReactNativePersistence) {
         persistence = getReactNativePersistence(RNAsyncStorage as any);
-        console.log("✅ Using React Native AsyncStorage persistence");
       } else {
-        console.log("⚠️ Falling back to browser persistence");
       }
     } catch {
       // Package not installed or require failed — fall back to browserLocalPersistence
-      console.log("⚠️ AsyncStorage not available, using browser persistence");
     }
 
     const authInstance = initializeAuth(app, {
       persistence,
     });
 
-    console.log("✅ Firebase Auth initialized successfully");
     return authInstance;
   } catch (e: any) {
     // Fallback to regular getAuth if initializeAuth is not available or already initialized
     if (e.code === "auth/already-initialized") {
-      console.log("⚠️ Auth already initialized, using existing instance");
       return getAuth(app);
     }
     console.error("❌ Error initializing auth:", e);
@@ -71,6 +66,5 @@ export const auth = (() => {
 
 // Initialize Firestore
 export const db = getFirestore(app); // ← Add this export
-console.log("✅ Firestore initialized successfully");
 
 export default app;
